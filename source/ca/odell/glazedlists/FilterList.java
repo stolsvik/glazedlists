@@ -56,6 +56,16 @@ public final class FilterList<E> extends TransformedList<E,E> {
     /** the matcher determines whether elements get filtered in or out */
     private Matcher<? super E> currentMatcher = Matchers.trueMatcher();
 
+    private void _setCurrentMatcher(Matcher<? super E> matcher) {
+        // DEBUG-CODE to catch problem when matcher was surprisingly set to null.
+        // if (matcher == null) {
+        // System.out.println("MATCHER IS BEING SET TO NULL! [" + Integer.toHexString(System.identityHashCode(this))
+        // + "] -> [" + this + "].");
+        // new RuntimeException().printStackTrace(System.out);
+        // }
+        currentMatcher = matcher;
+    }
+
     /** the editor changes the matcher and fires events */
     private MatcherEditor<? super E> currentEditor = null;
 
@@ -89,8 +99,16 @@ public final class FilterList<E> extends TransformedList<E,E> {
         // if no matcher was given, we have no further initialization work
         if (matcher == null) return;
 
-        currentMatcher = matcher;
-        changed();
+        _setCurrentMatcher(matcher);
+
+        // Update within read lock to prevent ConcurrentModificationException
+        source.getReadWriteLock().readLock().lock();
+        try {
+            changed();
+        }
+        finally {
+            source.getReadWriteLock().readLock().unlock();
+        }
     }
 
     /**
@@ -105,8 +123,16 @@ public final class FilterList<E> extends TransformedList<E,E> {
 
         currentEditor = matcherEditor;
         currentEditor.addMatcherEditorListener(listener);
-        currentMatcher = currentEditor.getMatcher();
-        changed();
+        _setCurrentMatcher(currentEditor.getMatcher());
+
+        // Update within read lock to prevent ConcurrentModificationException
+        source.getReadWriteLock().readLock().lock();
+        try {
+            changed();
+        }
+        finally {
+            source.getReadWriteLock().readLock().unlock();
+        }
     }
 
     /**
@@ -159,12 +185,12 @@ public final class FilterList<E> extends TransformedList<E,E> {
         // stop listening to the MatcherEditor if one exists
         if (currentEditor != null) {
             currentEditor.removeMatcherEditorListener(listener);
+            currentEditor = null;
         }
         // mark this list as disposed before clearing fields
         // this flag is checked in #changeMatcher
         disposed = true;
-        currentEditor = null;
-        currentMatcher = null;
+        _setCurrentMatcher(null);
     }
 
     /** {@inheritDoc} */
@@ -292,11 +318,26 @@ public final class FilterList<E> extends TransformedList<E,E> {
             if (currentEditor != matcherEditor) throw new IllegalStateException();
 
             switch (changeType) {
-                case MatcherEditor.Event.CONSTRAINED: currentMatcher = matcher; this.constrained(); break;
-                case MatcherEditor.Event.RELAXED: currentMatcher = matcher; this.relaxed(); break;
-                case MatcherEditor.Event.CHANGED: currentMatcher = matcher; this.changed(); break;
-                case MatcherEditor.Event.MATCH_ALL: currentMatcher = Matchers.trueMatcher(); this.matchAll(); break;
-                case MatcherEditor.Event.MATCH_NONE: currentMatcher = Matchers.falseMatcher(); this.matchNone(); break;
+                case MatcherEditor.Event.CONSTRAINED:
+                    _setCurrentMatcher(matcher);
+                    this.constrained();
+                    break;
+                case MatcherEditor.Event.RELAXED:
+                    _setCurrentMatcher(matcher);
+                    this.relaxed();
+                    break;
+                case MatcherEditor.Event.CHANGED:
+                    _setCurrentMatcher(matcher);
+                    this.changed();
+                    break;
+                case MatcherEditor.Event.MATCH_ALL:
+                    _setCurrentMatcher(Matchers.trueMatcher());
+                    this.matchAll();
+                    break;
+                case MatcherEditor.Event.MATCH_NONE:
+                    _setCurrentMatcher(Matchers.falseMatcher());
+                    this.matchNone();
+                    break;
             }
         }
     }
