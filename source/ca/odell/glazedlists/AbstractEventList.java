@@ -13,7 +13,10 @@ import ca.odell.glazedlists.impl.SimpleIterator;
 import ca.odell.glazedlists.impl.SubEventList;
 import ca.odell.glazedlists.util.concurrent.ReadWriteLock;
 
+import java.io.CharArrayWriter;
+import java.io.PrintWriter;
 import java.lang.reflect.Array;
+import java.lang.reflect.Field;
 import java.util.*;
 
 /**
@@ -29,6 +32,16 @@ import java.util.*;
  */
 public abstract class AbstractEventList<E> implements EventList<E> {
 
+    protected String _instantiationStackTraceString;
+    {
+        Exception e = new Exception("\"Instantiation Stacktrace\" - to see where this list was created.");
+        CharArrayWriter cw = new CharArrayWriter(512);
+        PrintWriter pw = new PrintWriter(cw);
+        e.printStackTrace(pw);
+        // No need to flush or close anything.
+        _instantiationStackTraceString = cw.toString();
+    }
+
     /** the change event and notification system */
     protected ListEventAssembler<E> updates = null;
 
@@ -37,6 +50,9 @@ public abstract class AbstractEventList<E> implements EventList<E> {
 
     /** the publisher manages the distribution of changes */
     protected ListEventPublisher publisher = null;
+
+    /** Double-dispose catcher */
+    protected volatile Exception _disposed = null;
 
     /**
      * Creates an {@link AbstractEventList} that sends events using the specified
@@ -81,6 +97,59 @@ public abstract class AbstractEventList<E> implements EventList<E> {
     @Override
     public void removeListEventListener(ListEventListener<? super E> listChangeListener) {
         updates.removeListEventListener(listChangeListener);
+    }
+
+    /**
+     * Checks if the list have been disposed before, and if not, disposes it,
+     * and stores a dispose-stacktrace.
+     */
+    @Override
+    public void dispose() {
+        checkDisposed();
+        _disposed = new Exception("Dispose-point for [" +
+                Integer.toHexString(System.identityHashCode(this)) + "].");
+    }
+
+    /**
+     * Static debugging helper: Gets the {@link ListEventListener}s that
+     * listens to the supplied {@link EventList}.
+     */
+    @SuppressWarnings("unchecked")
+    public static <E> List<ListEventListener<E>> getListEventListeners(EventList<E> from) {
+        Field updatesField;
+        try {
+            updatesField = AbstractEventList.class.getDeclaredField("updates");
+        }
+        catch (NoSuchFieldException e) {
+            throw new AssertionError(e);
+        }
+        updatesField.setAccessible(true);
+        ListEventAssembler<E> updates;
+        try {
+            updates = (ListEventAssembler<E>) updatesField.get(from);
+        }
+        catch (IllegalAccessException e) {
+            throw new AssertionError(e);
+        }
+        return updates.getListEventListeners();
+    }
+
+    protected void checkDisposed() {
+        if (_disposed != null) {
+            List<ListEventListener<E>> listEventListeners = getListEventListeners(this);
+            RuntimeException re = new IllegalStateException("Already disposed ["
+                    + Integer.toHexString(System.identityHashCode(this)) + "] -> [" + this + "].");
+            System.out.println("This stacktrace:");
+            re.printStackTrace(System.out);
+            System.out.println("Dispose-point stacktrace:");
+            _disposed.printStackTrace(System.out);
+            System.out.println("Listeners:");
+            for (ListEventListener<E> listEventListener : listEventListeners) {
+                System.out.println("  \\- [" + listEventListener + "].");
+            }
+
+            throw re;
+        }
     }
 
     /**

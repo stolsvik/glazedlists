@@ -169,6 +169,7 @@ public abstract class TransformedList<S, E> extends AbstractEventList<E> impleme
      */
     @Override
     public void dispose() {
+        super.dispose();
         source.removeListEventListener(this);
     }
 }

@@ -72,9 +72,6 @@ public final class FilterList<E> extends TransformedList<E,E> {
     /** listener handles changes to the matcher */
     private final MatcherEditor.Listener listener = new PrivateMatcherEditorListener();
 
-    /** is this list already disposed? */
-    private volatile boolean disposed;
-
     /**
      * Creates a {@link FilterList} that includes a subset of the specified
      * source {@link EventList}.
@@ -187,9 +184,6 @@ public final class FilterList<E> extends TransformedList<E,E> {
             currentEditor.removeMatcherEditorListener(listener);
             currentEditor = null;
         }
-        // mark this list as disposed before clearing fields
-        // this flag is checked in #changeMatcher
-        disposed = true;
         _setCurrentMatcher(null);
     }
 
@@ -313,7 +307,7 @@ public final class FilterList<E> extends TransformedList<E,E> {
      */
     private void changeMatcher(MatcherEditor<? super E> matcherEditor, Matcher<? super E> matcher, int changeType) {
         // first check if this list is already disposed
-        if (!disposed) {
+        if (_disposed == null) {
             // ensure the MatcherEvent is from OUR MatcherEditor
             if (currentEditor != matcherEditor) throw new IllegalStateException();
 
