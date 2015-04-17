@@ -8,3 +8,12 @@ target/
 *.iws
 extensions/*/lib/
 tools/
+
+# Gradle build
+.gradle
+/build-gradle
+# Contains password
+publish.gradle
+
+# For Eclipse build
+/build-eclipse
