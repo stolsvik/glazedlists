@@ -50,7 +50,7 @@ public final class GlazedListsSwing {
      * all of its update events from the Swing event dispatch thread.
      */
     public static boolean isSwingThreadProxyList(EventList list) {
-        return list instanceof SwingThreadProxyEventList;
+        return list.getClass().getName().contains("SwingThreadProxy");
     }
 
     // ThresholdRangeModels // // // // // // // // // // // // // // // // //
