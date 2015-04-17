@@ -4,6 +4,7 @@
 package ca.odell.glazedlists;
 
 // the Glazed Lists' change objects
+import ca.odell.glazedlists.event.SequenceDependenciesEventPublisher;
 import ca.odell.glazedlists.event.ListEventAssembler;
 import ca.odell.glazedlists.event.ListEventListener;
 import ca.odell.glazedlists.event.ListEventPublisher;
@@ -134,6 +135,11 @@ public abstract class AbstractEventList<E> implements EventList<E> {
         return updates.getListEventListeners();
     }
 
+    public void dumpGraph() {
+        SequenceDependenciesEventPublisher sdep = (SequenceDependenciesEventPublisher) publisher;
+        sdep.dumpGraph();
+    }
+
     protected void checkDisposed() {
         if (_disposed != null) {
             List<ListEventListener<E>> listEventListeners = getListEventListeners(this);
@@ -147,6 +153,8 @@ public abstract class AbstractEventList<E> implements EventList<E> {
             for (ListEventListener<E> listEventListener : listEventListeners) {
                 System.out.println("  \\- [" + listEventListener + "].");
             }
+
+            dumpGraph();
 
             throw re;
         }

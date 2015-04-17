@@ -27,7 +27,7 @@ import java.util.*;
  *
  * @author <a href="mailto:jesse@swank.ca">Jesse Wilson</a>
  */
-final class SequenceDependenciesEventPublisher implements ListEventPublisher, Serializable {
+public final class SequenceDependenciesEventPublisher implements ListEventPublisher, Serializable {
     // Determines whether or not checks are performed for attempting to remove a
     // non-existent listener. See https://java.net/jira/browse/GLAZEDLISTS-419
     // Default behavior is NOT to check.
@@ -77,6 +77,20 @@ final class SequenceDependenciesEventPublisher implements ListEventPublisher, Se
     /** Returns a proper initialized publisher object during deserialization. */
     private Object readResolve() throws ObjectStreamException {
         return new SequenceDependenciesEventPublisher();
+    }
+
+    public void dumpGraph() {
+        System.out.println("SubjectAndListeners graph:");
+        for (SubjectAndListener sal : subjectAndListeners) {
+            System.out.println("SAL: " + sal);
+        }
+        if (subjectsAndListenersForCurrentEvent != null) {
+            System.out.println("===============================================");
+            System.out.println("CURRENT EVENT, SubjectAndListeners graph:");
+            for (SubjectAndListener sal : subjectAndListeners) {
+                System.out.println("SAL: " + sal);
+            }
+        }
     }
 
     /**
