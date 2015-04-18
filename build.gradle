@@ -31,6 +31,10 @@ jar {
     }
 }
 
+task sourcesJar(type: Jar, dependsOn: classes) {
+    from sourceSets.main.allSource
+}
+
 // ------------------------------------------------
 // -- Maven Publish
 
